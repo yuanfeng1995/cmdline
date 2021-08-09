@@ -1,43 +1,19 @@
-/*
-  Copyright (c) 2009, Hideyuki Tanaka
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-  * Redistributions of source code must retain the above copyright
-  notice, this list of conditions and the following disclaimer.
-  * Redistributions in binary form must reproduce the above copyright
-  notice, this list of conditions and the following disclaimer in the
-  documentation and/or other materials provided with the distribution.
-  * Neither the name of the <organization> nor the
-  names of its contributors may be used to endorse or promote products
-  derived from this software without specific prior written permission.
-
-  THIS SOFTWARE IS PROVIDED BY <copyright holder> ''AS IS'' AND ANY
-  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  DISCLAIMED. IN NO EVENT SHALL <copyright holder> BE LIABLE FOR ANY
-  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 #pragma once
 
-#include <iostream>
-#include <sstream>
-#include <vector>
 #include <map>
+#include <vector>
 #include <string>
-#include <stdexcept>
-#include <typeinfo>
-#include <cstring>
-#include <algorithm>
-#include <cxxabi.h>
 #include <cstdlib>
+#include <sstream>
+#include <cstring>
+#include <typeinfo>
+#include <iostream>
+#include <stdexcept>
+#include <algorithm>
+
+#ifdef __GNUC__
+#include <cxxabi.h>
+#endif
 
 namespace cmdline{
 
@@ -51,7 +27,7 @@ public:
     std::stringstream ss;
     if (!(ss<<arg && ss>>ret && ss.eof()))
       throw std::bad_cast();
-    
+
     return ret;
   }
 };
@@ -61,7 +37,7 @@ class lexical_cast_t<Target, Source, true>{
 public:
   static Target cast(const Source &arg){
     return arg;
-  }  
+  }
 };
 
 template <typename Source>
@@ -104,11 +80,19 @@ Target lexical_cast(const Source &arg)
 
 static inline std::string demangle(const std::string &name)
 {
-  int status=0;
-  char *p=abi::__cxa_demangle(name.c_str(), 0, 0, &status);
-  std::string ret(p);
-  free(p);
-  return ret;
+#ifdef _MSC_VER
+  return name; // 为MSVC编译器时直接返回name
+#elif defined(__GNUC__)
+  // 为gcc编译器时还调用原来的代码
+    int status=0;
+    char *p=abi::__cxa_demangle(name.c_str(), 0, 0, &status);
+    std::string ret(p);
+    free(p);
+    return ret;
+#else
+    // 其他不支持的编译器需要自己实现这个方法
+#error unexpected c complier (msc/gcc), Need to implement this method for demangle
+#endif
 }
 
 template <class T>
@@ -560,7 +544,7 @@ public:
       if (ordered[i]->must())
         oss<<ordered[i]->short_description()<<" ";
     }
-    
+
     oss<<"[options] ... "<<ftr<<std::endl;
     oss<<"options:"<<std::endl;
 
